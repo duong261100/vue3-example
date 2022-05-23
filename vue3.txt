@@ -1,0 +1,199 @@
+- Vue instances / apps are now created with createApp()
+            // old
+            var vm = new Vue({ // options });
+
+            // new
+            const app = Vue.createApp({
+                data () {
+                    return {}
+                }
+            })
+
+
+- 'data' must now always be a method
+- Components, derectives & third-party modules are registered on 'app' instead of Vue global object
+            // old
+            Vue.component('the-button', { // options });
+
+            // new
+            app.component('the-button', { // options });
+
+- new option can be pass to vue instance: emits
+            app.component('the-button', { emits: ['update'] });
+
+- transitions: v-enter is now v-enter-from
+
+- Router is now created with createRouter()
+            import { createRouter, createWebHistory } from 'vue-router';
+            const router = createRouter({
+                history: createWebHistory(),
+                routes: [
+                    { path: '/', component: HomeView },
+                    //...
+                ]
+            });
+            app.use(router);
+
+- vuex is now created with createStore()
+            import { createStore } from 'vuex'
+            
+            const store = new Vuex.Store({
+                // options
+            })
+            
+            app.use(router);
+
+### Composition API
+
+- Old: Các phần logic có liên quan đến nhau, nhưng lại bị chia cắt ra nằm rải rác khắp nơi:
+            props: ['b_prop'],
+            data () {
+                return {
+                //Properties for data
+                //Properties for filtering
+                //Properties for sorting
+                }
+            },
+            methods: {      
+                //Methods for data
+                //Methods for filtering
+                //Methods for sorting
+            },
+            computed: {
+                //Values for data
+                //Values for filtering
+                //Values for sorting
+            }
+
+- New:
+            <template>
+                <button @click="increment">
+                    Count is: {{ state.count }}, double is: {{ state.double }}
+                </button>
+            </template>
+
+            <script>
+            import { reactive, computed } from 'vue'
+            export default {
+                setup() {
+                    const state = reactive({
+                        count: 0,
+                        double: computed(() => state.count * 2)
+                    })
+
+                    function increment() {
+                        state.count++
+                    }
+
+                    return {
+                        state,
+                        increment
+                    }
+                }
+            }
+            </script>
+
+
+- setup() chạy trước khi component được tạo ra, sau khi props được nhận
+- return của setup có thể được truy cập ở bất kì đâu trong component
+- onMounted()
+
+
+### Fragment
+
+- không còn yêu cầu toàn bộ view của component trong 1 thẻ duy nhất nữa
+            <template>
+                <h1>Something</h1>
+                <a>Something</a>
+            </template>
+
+
+## Suspense
+
+- tạm dừng render component chính của chúng ta, thay vào đó hiển thị 1 nội dung khác, và cho tới khi nào
+    component chính của chúng ta được download về nếu đó là async component (lazy load) hoặc cho tới khi
+    nào hoàn thành một công việc async nào đó ở trong setup.
+            // UserList.vue
+            <template>
+                <table>
+                    <tr>
+                        <th>No.</th>
+                        <th>Name</th>
+                    </tr>
+                    <tr v-for="(user, index) in users" :key="index">
+                        <td>{{ index + 1 }}</td>
+                        <td>{{ `${user.name.title}. ${user.name.first} ${user.name.last}` }}</td>
+                    </tr>
+                </table>
+            </template>
+
+            <script>
+                async function getUsers() {
+                    let response = await fetch('https://randomuser.me/api/?results=5000')
+                    let data = await response.json()
+                    return data.results
+                }
+
+                export default {
+                    async setup() {
+                    const users = await getUsers()
+                        return { users }
+                    }
+                }
+            </script>
+
+            // App.vue
+            <template>
+                <div v-if="error">
+                    {{ error }}
+                </div>
+                <Suspense v-else>
+                    <template #default>
+                        <UserProfile />
+                    </template>
+                    <template #fallback>
+                        <div>Loading...</div>
+                    </template>
+                </Suspense>
+            </template>
+
+            <script>
+            import { onErrorCaptured, ref } from 'vue'
+
+            setup () {
+                const error = ref(null)
+                onErrorCaptured(e => {
+                    error.value = e
+                    return true
+                })
+                return { error }
+            }
+            </script>
+
+            // UserList.vue
+            ...
+            async function getUsers() {
+                let response = await fetch('https://randomuser.me/api/?results=50')
+                let data = await response.json()
+                throw new Error('This is error') // thêm vào duy nhất dòng này
+                return data.results
+            }
+            ...
+
+
+### Teleport
+
+-  Dịch chuyển nội dung ta viết bên trong Vue ra bên ngoài phạm vi của nó (ra ngoài #app).
+            // App.vue
+            <template>
+                <h1>Vue Component</h1>
+                <Teleport to="#target">
+                    <div>
+                        Hello from Teleport
+                    </div>
+                </Teleport>
+            </template>
+
+            // index.html
+            <div id="app"></div>
+            <div id="target"></div> <!-- Đây là nơi ta Teleport vào -->
